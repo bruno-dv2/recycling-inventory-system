@@ -3,14 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { Material } from '../types';
 import { materialService } from '../services/material';
 import { estoqueService } from '../services/estoque';
+import MovimentacaoForm from '../components/MovimentacaoForm';
+
+interface Movimentacao {
+  materialId: number;
+  quantidade: number;
+  preco?: number;
+}
 
 const EntradaMaterial: React.FC = () => {
   const [materiais, setMateriais] = useState<Material[]>([]);
-  const [materialId, setMaterialId] = useState('');
-  const [quantidade, setQuantidade] = useState('');
-  const [preco, setPreco] = useState('');
   const [loading, setLoading] = useState(true);
-  const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState(false);
   const navigate = useNavigate();
@@ -30,30 +33,21 @@ const EntradaMaterial: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSalvando(true);
-    setErro('');
-    setSucesso(false);
-
+  const handleSubmit = async (movimentacoes: Movimentacao[]) => {
     try {
       await estoqueService.registrarEntrada(
-        Number(materialId),
-        Number(quantidade),
-        Number(preco)
+        movimentacoes.map(m => ({
+          materialId: m.materialId,
+          quantidade: m.quantidade,
+          preco: m.preco || 0
+        }))
       );
       setSucesso(true);
-      setMaterialId('');
-      setQuantidade('');
-      setPreco('');
-
       setTimeout(() => {
         navigate('/estoque');
       }, 2000);
     } catch {
-      setErro('Falha ao registrar entrada');
-    } finally {
-      setSalvando(false);
+      setErro('Falha ao registrar entradas');
     }
   };
 
@@ -97,86 +91,18 @@ const EntradaMaterial: React.FC = () => {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-green-700">Entrada registrada com sucesso!</p>
+                  <p className="text-sm text-green-700">Entradas registradas com sucesso!</p>
                 </div>
               </div>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="material" className="block text-sm font-medium text-gray-700">
-                Material
-              </label>
-              <select
-                id="material"
-                value={materialId}
-                onChange={(e) => setMaterialId(e.target.value)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                required
-              >
-                <option value="">Selecione um material</option>
-                {materiais.map((material) => (
-                  <option key={material.id} value={material.id}>
-                    {material.nome} ({material.unidade})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div>
-                <label htmlFor="quantidade" className="block text-sm font-medium text-gray-700">
-                  Quantidade
-                </label>
-                <input
-                  type="number"
-                  id="quantidade"
-                  value={quantidade}
-                  onChange={(e) => setQuantidade(e.target.value)}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  step="0.01"
-                  min="0"
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="preco" className="block text-sm font-medium text-gray-700">
-                  Preço Unitário (R$)
-                </label>
-                <input
-                  type="number"
-                  id="preco"
-                  value={preco}
-                  onChange={(e) => setPreco(e.target.value)}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  step="0.01"
-                  min="0"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => navigate('/estoque')}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={salvando}
-                className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                  salvando ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                {salvando ? 'Registrando...' : 'Registrar Entrada'}
-              </button>
-            </div>
-          </form>
+          <MovimentacaoForm
+            materiais={materiais}
+            tipo="entrada"
+            onSubmit={handleSubmit}
+            onCancel={() => navigate('/estoque')}
+          />
         </div>
       </div>
     </div>

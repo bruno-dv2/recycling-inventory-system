@@ -8,13 +8,17 @@ const Registro: React.FC = () => {
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [erro, setErro] = useState('');
-  
   const { registro } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
+
+    if (senha.length < 8) {
+      setErro('A senha deve ter no mínimo 8 caracteres');
+      return;
+    }
 
     if (senha !== confirmarSenha) {
       setErro('As senhas não conferem');
@@ -24,8 +28,12 @@ const Registro: React.FC = () => {
     try {
       await registro(nome, email, senha);
       navigate('/dashboard');
-    } catch {
-      setErro('Falha ao criar conta. Verifique os dados e tente novamente.');
+    } catch (error) {
+      if (error instanceof Error) {
+        setErro(error.message);
+      } else {
+        setErro('Falha ao criar conta. Verifique os dados e tente novamente.');
+      }
     }
   };
 
@@ -90,10 +98,14 @@ const Registro: React.FC = () => {
                 id="senha"
                 type="password"
                 required
+                minLength={8}
                 className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
               />
+              <p className="mt-1 text-sm text-gray-500">
+                A senha deve ter no mínimo 8 caracteres
+              </p>
             </div>
 
             <div>
@@ -104,6 +116,7 @@ const Registro: React.FC = () => {
                 id="confirmarSenha"
                 type="password"
                 required
+                minLength={8}
                 className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 value={confirmarSenha}
                 onChange={(e) => setConfirmarSenha(e.target.value)}
@@ -141,12 +154,6 @@ const Registro: React.FC = () => {
               </Link>
             </div>
           </div>
-        </div>
-
-        <div className="text-center mt-8">
-          <Link to="/" className="text-sm font-medium text-blue-600 hover:text-blue-500">
-            ← Voltar para a página inicial
-          </Link>
         </div>
       </div>
     </div>

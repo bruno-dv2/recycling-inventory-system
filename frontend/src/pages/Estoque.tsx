@@ -11,7 +11,7 @@ const Estoque: React.FC = () => {
   const carregarDados = async () => {
     try {
       const saldosData = await estoqueService.consultarSaldo();
-      setSaldos(saldosData);
+      setSaldos(saldosData.filter(saldo => saldo.quantidade > 0));
       setErro('');
     } catch {
       setErro('Falha ao carregar dados do estoque');
@@ -31,6 +31,11 @@ const Estoque: React.FC = () => {
       </div>
     );
   }
+
+  const valorTotalEstoque = saldos.reduce(
+    (total, saldo) => total + saldo.quantidade * saldo.precoMedio,
+    0
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -73,6 +78,13 @@ const Estoque: React.FC = () => {
         </div>
       )}
 
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Resumo do Estoque</h2>
+        <div className="text-3xl font-bold text-gray-900">
+          Valor Total: R$ {valorTotalEstoque.toFixed(2)}
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Saldo Atual</h2>
@@ -99,26 +111,49 @@ const Estoque: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {saldos.map((saldo, index) => (
-                <tr key={index} className={saldo.quantidade < 10 ? 'bg-red-50' : ''}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {saldo.material}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    {saldo.quantidade.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {saldo.unidade}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    R$ {saldo.precoMedio.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    R$ {(saldo.quantidade * saldo.precoMedio).toFixed(2)}
+              {saldos.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                    Nenhum material em estoque
                   </td>
                 </tr>
-              ))}
+              ) : (
+                saldos.map((saldo, index) => (
+                  <tr 
+                    key={index} 
+                    className={saldo.quantidade < 10 ? 'bg-red-50' : 'hover:bg-gray-50'}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {saldo.material}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                      {saldo.quantidade.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {saldo.unidade}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                      R$ {saldo.precoMedio.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                      R$ {(saldo.quantidade * saldo.precoMedio).toFixed(2)}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
+            {saldos.length > 0 && (
+              <tfoot className="bg-gray-50">
+                <tr>
+                  <td colSpan={4} className="px-6 py-4 text-right text-sm font-medium text-gray-900">
+                    Valor Total do Estoque:
+                  </td>
+                  <td className="px-6 py-4 text-right text-sm font-bold text-gray-900">
+                    R$ {valorTotalEstoque.toFixed(2)}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

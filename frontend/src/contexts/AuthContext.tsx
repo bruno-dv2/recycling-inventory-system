@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Usuario } from '../types';
 import authService from '../services/auth';
+import api from '../services/api';
 
 interface AuthContextData {
   usuario: Usuario | null;
@@ -18,27 +19,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!token) {
-      setLoading(false);
-      return;
+    const usuarioSalvo = localStorage.getItem('usuario');
+
+    if (token && usuarioSalvo) {
+      setUsuario(JSON.parse(usuarioSalvo));
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
 
     setLoading(false);
   }, []);
 
+  const validarSenha = (senha: string): boolean => {
+    return senha.length >= 8;
+  };
+
   const login = async (email: string, senha: string) => {
+    if (!validarSenha(senha)) {
+      throw new Error('A senha deve ter no mínimo 8 caracteres');
+    }
+
     const response = await authService.login(email, senha);
     setUsuario(response.usuario);
+    localStorage.setItem('usuario', JSON.stringify(response.usuario));
+    api.defaults.headers.common['Authorization'] = `Bearer ${response.token}`;
   };
 
   const registro = async (nome: string, email: string, senha: string) => {
+    if (!validarSenha(senha)) {
+      throw new Error('A senha deve ter no mínimo 8 caracteres');
+    }
+
     const response = await authService.registro(nome, email, senha);
     setUsuario(response.usuario);
+    localStorage.setItem('usuario', JSON.stringify(response.usuario));
+    api.defaults.headers.common['Authorization'] = `Bearer ${response.token}`;
   };
 
   const logout = () => {
     authService.logout();
     setUsuario(null);
+    localStorage.removeItem('usuario');
+    delete api.defaults.headers.common['Authorization'];
   };
 
   return (

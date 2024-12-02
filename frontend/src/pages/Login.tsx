@@ -12,12 +12,21 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
-    
+
+    if (senha.length < 8) {
+      setErro('A senha deve ter no mínimo 8 caracteres');
+      return;
+    }
+
     try {
       await login(email, senha);
       navigate('/dashboard');
-    } catch {
-      setErro('Falha no login. Verifique suas credenciais.');
+    } catch (error) {
+      if (error instanceof Error) {
+        setErro(error.message);
+      } else {
+        setErro('Falha no login. Verifique suas credenciais.');
+      }
     }
   };
 
@@ -32,7 +41,7 @@ const Login: React.FC = () => {
         <div className="bg-white rounded-lg shadow-xl p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {erro && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+              <div className="bg-red-50 border-l-4 border-red-500 p-4">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -68,10 +77,14 @@ const Login: React.FC = () => {
                 id="senha"
                 type="password"
                 required
+                minLength={8}
                 className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
               />
+              <p className="mt-1 text-sm text-gray-500">
+                A senha deve ter no mínimo 8 caracteres
+              </p>
             </div>
 
             <div>
@@ -105,12 +118,6 @@ const Login: React.FC = () => {
               </Link>
             </div>
           </div>
-        </div>
-
-        <div className="text-center mt-8">
-          <Link to="/" className="text-sm font-medium text-blue-600 hover:text-blue-500">
-            ← Voltar para a página inicial
-          </Link>
         </div>
       </div>
     </div>

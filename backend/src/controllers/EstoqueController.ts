@@ -6,92 +6,128 @@ const prisma = new PrismaClient();
 export class EstoqueController {
   async registrarEntrada(req: Request, res: Response): Promise<void> {
     try {
-      const { materialId, quantidade, preco } = req.body;
+      const entradas = Array.isArray(req.body) ? req.body : [req.body];
+      
+      if (!entradas.length || !entradas.every(e => e.materialId && e.quantidade && e.preco)) {
+        res.status(400).json({ erro: 'Dados de entrada inválidos. Verifique se selecionou o material.' });
+        return;
+      }
 
-      const entrada = await prisma.entrada.create({
-        data: {
-          materialId: Number(materialId),
-          quantidade,
-          preco
-        },
-        include: {
-          material: true
+      for (const entrada of entradas) {
+        const { materialId, quantidade, preco } = entrada;
+
+        let estoque = await prisma.estoque.findUnique({
+          where: { materialId: Number(materialId) }
+        });
+
+        if (estoque) {
+          const novoValorTotal = estoque.valorTotal + (quantidade * preco);
+          const novaQuantidade = estoque.quantidade + quantidade;
+          const novoPrecoMedio = novoValorTotal / novaQuantidade;
+
+          await prisma.estoque.update({
+            where: { materialId: Number(materialId) },
+            data: {
+              quantidade: novaQuantidade,
+              precoMedio: novoPrecoMedio,
+              valorTotal: novoValorTotal
+            }
+          });
+        } else {
+          await prisma.estoque.create({
+            data: {
+              materialId: Number(materialId),
+              quantidade: quantidade,
+              precoMedio: preco,
+              valorTotal: quantidade * preco
+            }
+          });
         }
-      });
 
-      res.json(entrada);
-    } catch {
+        await prisma.entrada.create({
+          data: {
+            materialId: Number(materialId),
+            quantidade,
+            preco
+          }
+        });
+      }
+
+      res.json({ mensagem: 'Entradas registradas com sucesso' });
+    } catch (error) {
+      console.error(error);
       res.status(400).json({ erro: 'Falha ao registrar entrada' });
     }
   }
 
   async registrarSaida(req: Request, res: Response): Promise<void> {
     try {
-      const { materialId, quantidade } = req.body;
-
-      // Verificar saldo
-      const entradas = await prisma.entrada.findMany({
-        where: { materialId: Number(materialId) }
-      });
-
-      const saidas = await prisma.saida.findMany({
-        where: { materialId: Number(materialId) }
-      });
-
-      const totalEntradas = entradas.reduce((sum, entrada) => sum + entrada.quantidade, 0);
-      const totalSaidas = saidas.reduce((sum, saida) => sum + saida.quantidade, 0);
-      const saldoAtual = totalEntradas - totalSaidas;
-
-      if (saldoAtual < quantidade) {
-        res.status(400).json({ erro: 'Quantidade insuficiente em estoque' });
+      const saidas = Array.isArray(req.body) ? req.body : [req.body];
+      
+      if (!saidas.length || !saidas.every(s => s.materialId && s.quantidade)) {
+        res.status(400).json({ erro: 'Dados de saída inválidos. Verifique se selecionou o material.' });
         return;
       }
 
-      const saida = await prisma.saida.create({
-        data: {
-          materialId: Number(materialId),
-          quantidade
-        },
-        include: {
-          material: true
-        }
-      });
+      for (const saida of saidas) {
+        const { materialId, quantidade } = saida;
 
-      res.json(saida);
-    } catch {
+        const estoque = await prisma.estoque.findUnique({
+          where: { materialId: Number(materialId) }
+        });
+
+        if (!estoque || estoque.quantidade < quantidade) {
+          res.status(400).json({ erro: 'Quantidade insuficiente em estoque' });
+          return;
+        }
+
+        await prisma.estoque.update({
+          where: { materialId: Number(materialId) },
+          data: {
+            quantidade: estoque.quantidade - quantidade,
+            valorTotal: (estoque.quantidade - quantidade) * estoque.precoMedio
+          }
+        });
+
+        await prisma.saida.create({
+          data: {
+            materialId: Number(materialId),
+            quantidade
+          }
+        });
+      }
+
+      res.json({ mensagem: 'Saídas registradas com sucesso' });
+    } catch (error) {
+      console.error(error);
       res.status(400).json({ erro: 'Falha ao registrar saída' });
     }
   }
 
   async consultarSaldo(req: Request, res: Response): Promise<void> {
     try {
-      const materiais = await prisma.material.findMany();
-      const saldos = [];
+      const estoques = await prisma.estoque.findMany({
+        where: {
+          quantidade: {
+            gt: 0
+          }
+        },
+        include: {
+          material: true
+        }
+      });
 
-      for (const material of materiais) {
-        const entradas = await prisma.entrada.findMany({
-          where: { materialId: material.id }
-        });
-
-        const saidas = await prisma.saida.findMany({
-          where: { materialId: material.id }
-        });
-
-        const totalEntradas = entradas.reduce((sum, entrada) => sum + entrada.quantidade, 0);
-        const totalSaidas = saidas.reduce((sum, saida) => sum + saida.quantidade, 0);
-        const valorTotal = entradas.reduce((sum, entrada) => sum + (entrada.quantidade * entrada.preco), 0);
-        const precoMedio = totalEntradas > 0 ? valorTotal / totalEntradas : 0;
-
-        saldos.push({
-          material: material.nome,
-          quantidade: totalEntradas - totalSaidas,
-          unidade: material.unidade,
-          precoMedio
-        });
-      }
+      const saldos = estoques.map(estoque => ({
+        material: estoque.material.nome,
+        quantidade: estoque.quantidade,
+        unidade: estoque.material.unidade,
+        precoMedio: estoque.precoMedio,
+        valorTotal: estoque.valorTotal
+      }));
 
       res.json(saldos);
-    } catch {
+    } catch (error) {
+      console.error(error);
       res.status(400).json({ erro: 'Falha ao consultar saldo' });
     }
   }
