@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -28,6 +27,7 @@ model Material {
   dataAtualizacao DateTime   @updatedAt
   entradas        Entrada[]
   saidas          Saida[]
+  estoque         Estoque?
 
   @@map("materiais")
 }
@@ -38,7 +38,8 @@ model Entrada {
   quantidade  Float
   preco       Float
   data        DateTime @default(now())
-  material    Material @relation(fields: [materialId], references: [id])
+  material    Material @relation(fields: [materialId], references: [id], map: "entrada_material_fk")
+  estoque     Estoque  @relation(fields: [materialId], references: [materialId], map: "entrada_estoque_fk")
 
   @@map("entradas")
 }
@@ -48,7 +49,20 @@ model Saida {
   materialId  Int
   quantidade  Float
   data        DateTime @default(now())
-  material    Material @relation(fields: [materialId], references: [id])
+  material    Material @relation(fields: [materialId], references: [id], map: "saida_material_fk")
+  estoque     Estoque  @relation(fields: [materialId], references: [materialId], map: "saida_estoque_fk")
 
   @@map("saidas")
+}
+
+model Estoque {
+  materialId    Int       @id
+  material      Material  @relation(fields: [materialId], references: [id], map: "estoque_material_fk")
+  quantidade    Float
+  precoMedio    Float
+  valorTotal    Float
+  entradas      Entrada[]
+  saidas        Saida[]
+  
+  @@map("estoque")
 }

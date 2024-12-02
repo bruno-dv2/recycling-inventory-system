@@ -1,22 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { materialService } from '../services/material';
-import { Material } from '../types';
+import { Material, SaldoMaterial } from '../types';
+import { estoqueService } from '../services/estoque';
 
 const Materiais: React.FC = () => {
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
   const [materialEditando, setMaterialEditando] = useState<Material | null>(null);
-  
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
   const [unidade, setUnidade] = useState('');
+  const [saldos, setSaldos] = useState<SaldoMaterial[]>([]);
 
-  const carregarMateriais = async () => {
+  const carregarDados = async () => {
     try {
-      const data = await materialService.listar();
-      setMateriais(data);
+      const [materiaisData, saldosData] = await Promise.all([
+        materialService.listar(),
+        estoqueService.consultarSaldo()
+      ]);
+      setMateriais(materiaisData);
+      setSaldos(saldosData);
       setErro('');
     } catch {
       setErro('Falha ao carregar materiais');
@@ -26,7 +32,7 @@ const Materiais: React.FC = () => {
   };
 
   useEffect(() => {
-    carregarMateriais();
+    carregarDados();
   }, []);
 
   const resetForm = () => {
@@ -39,6 +45,7 @@ const Materiais: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
+    setSucesso('');
 
     try {
       if (materialEditando) {
@@ -47,19 +54,28 @@ const Materiais: React.FC = () => {
           descricao,
           unidade
         });
+        setSucesso('Material atualizado com sucesso');
       } else {
         await materialService.criar({
           nome,
           descricao,
           unidade
         });
+        setSucesso('Material cadastrado com sucesso');
       }
-      
-      await carregarMateriais();
+      await carregarDados();
       setModalAberto(false);
       resetForm();
-    } catch {
-      setErro(`Falha ao ${materialEditando ? 'atualizar' : 'criar'} material`);
+
+      setTimeout(() => {
+        setSucesso('');
+      }, 3000);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('already exists')) {
+        setErro('Já existe um material cadastrado com este nome');
+      } else {
+        setErro(`Falha ao ${materialEditando ? 'atualizar' : 'criar'} material`);
+      }
     }
   };
 
@@ -72,13 +88,27 @@ const Materiais: React.FC = () => {
   };
 
   const handleExcluir = async (id: number) => {
-    if (!window.confirm('Tem certeza que deseja excluir este material?')) {
-      return;
-    }
-
     try {
+      const materialSaldo = saldos.find(s => 
+        s.material === materiais.find(m => m.id === id)?.nome
+      );
+
+      if (materialSaldo && materialSaldo.quantidade > 0) {
+        setErro('Não é possível excluir material com saldo em estoque');
+        return;
+      }
+
+      if (!window.confirm('Tem certeza que deseja excluir este material?')) {
+        return;
+      }
+
       await materialService.excluir(id);
-      await carregarMateriais();
+      setSucesso('Material excluído com sucesso');
+      await carregarDados();
+
+      setTimeout(() => {
+        setSucesso('');
+      }, 3000);
     } catch {
       setErro('Falha ao excluir material');
     }
@@ -109,6 +139,12 @@ const Materiais: React.FC = () => {
         </div>
       )}
 
+      {sucesso && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          {sucesso}
+        </div>
+      )}
+
       <div className="bg-white shadow-md rounded my-6">
         <table className="min-w-full">
           <thead>
@@ -120,27 +156,33 @@ const Materiais: React.FC = () => {
             </tr>
           </thead>
           <tbody className="text-gray-600">
-            {materiais.map((material) => (
-              <tr key={material.id} className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="py-4 px-6">{material.nome}</td>
-                <td className="py-4 px-6">{material.descricao || '-'}</td>
-                <td className="py-4 px-6">{material.unidade}</td>
-                <td className="py-4 px-6 text-center">
-                  <button
-                    onClick={() => handleEditar(material)}
-                    className="text-blue-600 hover:text-blue-900 mr-4"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => handleExcluir(material.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Excluir
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {materiais.map((material) => {
+              const materialSaldo = saldos.find(s => s.material === material.nome);
+              return (
+                <tr key={material.id} className="border-b border-gray-200 hover:bg-gray-50">
+                  <td className="py-4 px-6">{material.nome}</td>
+                  <td className="py-4 px-6">{material.descricao || '-'}</td>
+                  <td className="py-4 px-6">{material.unidade}</td>
+                  <td className="py-4 px-6 text-center">
+                    <button
+                      onClick={() => handleEditar(material)}
+                      className="text-blue-600 hover:text-blue-900 mr-4"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => handleExcluir(material.id)}
+                      className="text-red-600 hover:text-red-900"
+                      disabled={materialSaldo && materialSaldo.quantidade > 0}
+                      title={materialSaldo && materialSaldo.quantidade > 0 ? 
+                        "Não é possível excluir material com saldo em estoque" : ""}
+                    >
+                      Excluir
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
