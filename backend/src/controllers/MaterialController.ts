@@ -3,10 +3,24 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+interface AuthenticatedRequest extends Request {
+  usuarioId?: number;
+}
+
 export class MaterialController {
-  async listar(req: Request, res: Response): Promise<void> {
+  async listar(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
+      const usuarioId = req.usuarioId;
+      
+      if (!usuarioId) {
+        res.status(401).json({ erro: 'Usuário não autenticado' });
+        return;
+      }
+
       const materiais = await prisma.material.findMany({
+        where: {
+          usuarioId: usuarioId
+        },
         include: {
           estoque: true
         }
@@ -18,12 +32,23 @@ export class MaterialController {
     }
   }
 
-  async criar(req: Request, res: Response): Promise<void> {
+  async criar(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { nome, descricao, unidade } = req.body;
+      const usuarioId = req.usuarioId;
+
+      if (!usuarioId) {
+        res.status(401).json({ erro: 'Usuário não autenticado' });
+        return;
+      }
 
       const materialExiste = await prisma.material.findUnique({
-        where: { nome }
+        where: {
+          nome_usuarioId: {
+            nome: nome,
+            usuarioId: usuarioId
+          }
+        }
       });
 
       if (materialExiste) {
@@ -35,7 +60,8 @@ export class MaterialController {
         data: {
           nome,
           descricao,
-          unidade
+          unidade,
+          usuarioId
         }
       });
 
@@ -49,14 +75,30 @@ export class MaterialController {
     }
   }
 
-  async atualizar(req: Request, res: Response): Promise<void> {
+  async atualizar(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { nome, descricao, unidade } = req.body;
+      const usuarioId = req.usuarioId;
+
+      if (!usuarioId) {
+        res.status(401).json({ erro: 'Usuário não autenticado' });
+        return;
+      }
+
+      const materialAtual = await prisma.material.findUnique({
+        where: { id: Number(id) }
+      });
+
+      if (!materialAtual || materialAtual.usuarioId !== usuarioId) {
+        res.status(404).json({ erro: 'Material não encontrado' });
+        return;
+      }
 
       const materialExistente = await prisma.material.findFirst({
         where: {
           nome,
+          usuarioId,
           NOT: {
             id: Number(id)
           }
@@ -87,9 +129,24 @@ export class MaterialController {
     }
   }
 
-  async excluir(req: Request, res: Response): Promise<void> {
+  async excluir(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
+      const usuarioId = req.usuarioId;
+
+      if (!usuarioId) {
+        res.status(401).json({ erro: 'Usuário não autenticado' });
+        return;
+      }
+
+      const material = await prisma.material.findUnique({
+        where: { id: Number(id) }
+      });
+
+      if (!material || material.usuarioId !== usuarioId) {
+        res.status(404).json({ erro: 'Material não encontrado' });
+        return;
+      }
 
       const estoque = await prisma.estoque.findUnique({
         where: { materialId: Number(id) }
