@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { estoqueService } from '../services/estoque';
 import { materialService } from '../services/material';
 import { SaldoMaterial, Material } from '../types';
+import { formatCurrency } from '../../src/utils/currency';
 
 const Dashboard: React.FC = () => {
   const [saldos, setSaldos] = useState<SaldoMaterial[]>([]);
@@ -87,7 +88,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
           <p className="mt-2 text-3xl font-bold text-gray-700">
-            R$ {saldos.reduce((total, saldo) => total + (saldo.quantidade * saldo.precoMedio), 0).toFixed(2)}
+            {formatCurrency(saldos.reduce((total, saldo) => total + (saldo.quantidade * saldo.precoMedio), 0))}
           </p>
           <Link to="/estoque" className="mt-4 inline-block text-sm text-blue-600 hover:text-blue-700">
             Ver estoque →

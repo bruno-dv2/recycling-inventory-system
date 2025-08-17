@@ -1,5 +1,6 @@
 import React from 'react';
 import { SaldoMaterial } from '../types';
+import { formatCurrency, formatQuantity } from '../utils/currency';
 
 interface SaldoTableProps {
   saldos: SaldoMaterial[];
@@ -22,13 +23,15 @@ const SaldoTable: React.FC<SaldoTableProps> = ({ saldos }) => {
           {saldos.map((saldo, index) => (
             <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
               <td className="py-4 px-6">{saldo.material}</td>
-              <td className="py-4 px-6 text-right">{saldo.quantidade.toFixed(2)}</td>
+              <td className="py-4 px-6 text-right">
+                {formatQuantity(saldo.quantidade)}
+              </td>
               <td className="py-4 px-6">{saldo.unidade}</td>
               <td className="py-4 px-6 text-right">
-                R$ {saldo.precoMedio.toFixed(2)}
+                {formatCurrency(saldo.precoMedio)}
               </td>
               <td className="py-4 px-6 text-right">
-                R$ {(saldo.quantidade * saldo.precoMedio).toFixed(2)}
+                {formatCurrency(saldo.quantidade * saldo.precoMedio)}
               </td>
             </tr>
           ))}
