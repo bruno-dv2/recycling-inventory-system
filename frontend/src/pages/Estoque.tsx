@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { estoqueService } from '../services/estoque';
 import { SaldoMaterial } from '../types';
+import { formatCurrency, formatQuantity } from '../utils/currency';
 
 const Estoque: React.FC = () => {
   const [saldos, setSaldos] = useState<SaldoMaterial[]>([]);
@@ -81,7 +82,7 @@ const Estoque: React.FC = () => {
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Resumo do Estoque</h2>
         <div className="text-3xl font-bold text-gray-900">
-          Valor Total: R$ {valorTotalEstoque.toFixed(2)}
+          Valor Total: {formatCurrency(valorTotalEstoque)}
         </div>
       </div>
 
@@ -127,16 +128,16 @@ const Estoque: React.FC = () => {
                       {saldo.material}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                      {saldo.quantidade.toFixed(2)}
+                      {formatQuantity(saldo.quantidade)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {saldo.unidade}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                      R$ {saldo.precoMedio.toFixed(2)}
+                      {formatCurrency(saldo.precoMedio)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                      R$ {(saldo.quantidade * saldo.precoMedio).toFixed(2)}
+                      {formatCurrency(saldo.quantidade * saldo.precoMedio)}
                     </td>
                   </tr>
                 ))
@@ -149,7 +150,7 @@ const Estoque: React.FC = () => {
                     Valor Total do Estoque:
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-bold text-gray-900">
-                    R$ {valorTotalEstoque.toFixed(2)}
+                    {formatCurrency(valorTotalEstoque)}
                   </td>
                 </tr>
               </tfoot>

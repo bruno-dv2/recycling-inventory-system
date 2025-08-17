@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Material } from '../types';
+import { normalizeInput } from '../utils/currency';
 
 interface Movimentacao {
   materialId: number;
@@ -56,28 +57,34 @@ const MovimentacaoForm: React.FC<MovimentacaoFormProps> = ({
       return;
     }
 
-    if (movimentacoes.some(m => !m.quantidade || Number(m.quantidade) <= 0)) {
-      setErro('Todas as quantidades devem ser maiores que zero');
-      return;
-    }
+    const movimentacoesNormalizadas = movimentacoes.map(m => ({
+    ...m,
+    quantidade: normalizeInput(m.quantidade),
+    preco: m.preco ? normalizeInput(m.preco) : undefined
+  }));
 
-    if (tipo === 'entrada' && movimentacoes.some(m => !m.preco || Number(m.preco) <= 0)) {
-      setErro('Todos os preços devem ser maiores que zero');
-      return;
-    }
+  if (movimentacoesNormalizadas.some(m => !m.quantidade || Number(m.quantidade) <= 0)) {
+    setErro('Todas as quantidades devem ser maiores que zero');
+    return;
+  }
 
-    try {
-      const movimentacoesNumeros = movimentacoes.map(m => ({
-        materialId: m.materialId,
-        quantidade: Number(m.quantidade),
-        ...(tipo === 'entrada' ? { preco: Number(m.preco) } : {})
-      }));
-      
-      await onSubmit(movimentacoesNumeros);
-    } catch (error) {
-      setErro(`Erro ao registrar movimentação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    }
-  };
+  if (tipo === 'entrada' && movimentacoesNormalizadas.some(m => !m.preco || Number(m.preco) <= 0)) {
+    setErro('Todos os preços devem ser maiores que zero');
+    return;
+  }
+
+  try {
+    const movimentacoesNumeros = movimentacoesNormalizadas.map(m => ({
+      materialId: m.materialId,
+      quantidade: Number(m.quantidade),
+      ...(tipo === 'entrada' ? { preco: Number(m.preco) } : {})
+    }));
+    
+    await onSubmit(movimentacoesNumeros);
+  } catch (error) {
+    setErro(`Erro ao registrar movimentação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+  }
+};
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -128,12 +135,13 @@ const MovimentacaoForm: React.FC<MovimentacaoFormProps> = ({
                 Quantidade
               </label>
               <input
-                type="number"
+                type="text"
                 id={`quantidade-${index}`}
                 value={movimentacao.quantidade}
                 onChange={(e) => handleMovimentacaoChange(index, 'quantidade', e.target.value)}
-                step="0.01"
-                min="0"
+                placeholder=""
+                inputMode="decimal"
+                pattern="[0-9,\.]*"
                 className="input-field"
                 required
               />
@@ -145,12 +153,13 @@ const MovimentacaoForm: React.FC<MovimentacaoFormProps> = ({
                   Preço Unitário (R$)
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   id={`preco-${index}`}
                   value={movimentacao.preco}
                   onChange={(e) => handleMovimentacaoChange(index, 'preco', e.target.value)}
-                  step="0.01"
-                  min="0"
+                  placeholder="0,00"
+                  inputMode="decimal"
+                  pattern="[0-9,\.]*"
                   className="input-field"
                   required
                 />
